@@ -1,0 +1,3 @@
+[submodule "src/cvfpu"]
+	path = src/cvfpu
+	url = git@github.com:eliasbjork/cvfpu.git
