@@ -102,11 +102,13 @@ module top_tb;
 
   initial begin : output_sequence
     // Wait for the accelerator to produce output
-    wait (wren);
+    forever @(posedge clk) begin
+        wait (wren);
 
-    regfile[waddr] = wdata;
+        regfile[waddr] = wdata;
 
-    // TODO check result vs expected
+        // TODO check result vs expected
+    end
 
   end
 
