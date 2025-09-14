@@ -12,11 +12,11 @@ module acc_top
     output logic            ready_o,
 
     // CPU regfile interface
-    output reg_addr_t [2:0] raddr_o,
+    output reg_addr_t       raddr_o,
     output reg_addr_t       waddr_o,
     output data_t           wdata_o,
     output logic            wren_o,
-    input  data_t     [2:0] rdata_i,
+    input  data_t           rdata_i,
     input  logic            rvalid_i,
 
     // forwarded data from CPU

@@ -8,7 +8,7 @@ package acc_pkg;
   typedef logic [DATA_WIDTH-1:0] data_t;
   typedef logic [ADDR_WIDTH-1:0] addr_t;
   typedef logic [REG_ADDR_WIDTH-1:0] reg_addr_t;
-  typedef logic [DATA_WIDTH-1:0] counter_t;
+  typedef logic [DATA_WIDTH-1:0] data_counter_t;
   typedef logic [ADDR_WIDTH-1:0] tag_t;
   typedef logic mask_t;
 

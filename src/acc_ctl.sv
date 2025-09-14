@@ -1,6 +1,11 @@
 module acc_ctl
     import acc_pkg::*;
     import fpnew_pkg::*;
+#(
+    parameter integer W = 8,
+    parameter integer R = 2
+
+)
 (
     input logic rst_ni,
     input logic clk_i,
@@ -9,12 +14,12 @@ module acc_ctl
     input  acc_instr_t       cpu_acc_instr_i,
     input  logic             cpu_acc_instr_valid_i,
     output logic             cpu_busy_o,
-    output logic             cpu_ready_o,
-    output reg_addr_t  [2:0] cpu_raddr_o,
+    output logic             cpu_rready_o,
+    output reg_addr_t        cpu_raddr_o,
     output reg_addr_t        cpu_waddr_o,
     output data_t            cpu_wdata_o,
     output logic             cpu_wren_o,
-    input  data_t      [2:0] cpu_rdata_i,
+    input  data_t            cpu_rdata_i,
     input  data_t            cpu_fwd_data_i,
     input  logic             cpu_fwd_valid_i,
     input  logic             cpu_rvalid_i,
@@ -42,17 +47,23 @@ enum logic[1:0] {
     S_PIV_ROW_I
 } state, next_state;
 
+typedef logic [$clog2(R)-1:0] curr_reg_counter_t;
+typedef logic [$clog2(W)-1:0] piv_reg_counter_t;
+
 reg_addr_t x_s, next_x_s;
-data_t M, N, p, q, a_pq_inv, next_M, next_N, next_p, next_q, next_a_pq_inv;
-counter_t i, j, k, next_i, next_j, next_k;
+data_t M, N, p, q, a_pq_inv, a_iq, next_M, next_N, next_p, next_q, next_a_pq_inv, next_a_iq;
+data_counter_t i, j, k, next_i, next_j, next_k;
+curr_reg_counter_t r, next_r;
+piv_reg_counter_t w, next_w;
 
 fpu_req_t fpu_req;
 
-logic cpu_raddr;
-logic fpu_in_valid;
+addr_t cpu_raddr;
+logic fpu_in_valid, cpu_rready;
 
 assign cpu_raddr_o = cpu_raddr;
 assign fpu_in_valid_o = fpu_in_valid;
+
 
 
 assign cpu_busy_o = fpu_busy_i;
@@ -78,6 +89,7 @@ always_ff @(clk_i) begin
         p <= 0;
         q <= 0;
         a_pq_inv <= 0;
+        a_iq <= 0;
         i <= 0;
         j <= 0;
         k <= 0;
@@ -89,6 +101,7 @@ always_ff @(clk_i) begin
         p <= next_p;
         q <= next_q;
         a_pq_inv <= next_a_pq_inv;
+        a_iq <= next_a_iq;
         i <= next_i;
         j <= next_j;
         k <= next_k;
@@ -105,8 +118,14 @@ always_comb begin : acc_state_machine
     next_i = i;
     next_j = j;
     next_k = k;
+    next_r = r;
+    next_w = w;
+    next_a_pq_inv = a_pq_inv;
+    next_a_iq = a_iq;
+    next_p = p;
+    next_q = q;
+    fpu_req = '0;
     fpu_in_valid = 0;
-    cpu_raddr = 0;
     fpu_req.simd_mask = '0; // default to no lanes active
 
     unique case (state)
@@ -126,6 +145,9 @@ always_comb begin : acc_state_machine
                             next_i = 0;
                             next_j = 0;
                             next_k = 0;
+                            next_p = cpu_acc_instr_i.op0;
+                            next_q = cpu_acc_instr_i.op1;
+                            next_a_pq_inv = cpu_acc_instr_i.op2;
                             next_state = S_PIV_ROW_P;
                         end
                     endcase
@@ -149,10 +171,59 @@ always_comb begin : acc_state_machine
 
         end
         S_PIV_ROW_P: begin
+            if (cpu_fwd_valid_i) begin
+                fpu_req.tag = x_s + w;
+                fpu_req.op = MUL;
+                fpu_req.op_mod = 0;
+                fpu_req.operands[0] = cpu_fwd_data_i; // A[p,j]
+                fpu_req.operands[1] = a_pq_inv;
+                fpu_req.operands[2] = 0;
+                fpu_in_valid = 1;
+                next_state = S_PIV_CHANGE_ROW;
+                if (j < k * W) begin
+                    next_j = j + 1;
+                    next_w = w + 1;
+                end else begin
+                    next_j = k * W;
+                    next_w = 0;
+                    next_state = S_PIV_CHANGE_ROW;
+                end
+            end
         end
         S_PIV_CHANGE_ROW: begin
+            if(cpu_fwd_valid_i) begin
+                next_a_iq = cpu_fwd_data_i;
+                next_state = S_PIV_ROW_I;
+            end
         end
         S_PIV_ROW_I: begin
+            raddr_o = x_s + w;
+            if (cpu_rvalid_i && cpu_fwd_valid_i)begin
+                fpu_req.tag = x_s + w;
+                fpu_req.op = FNMSUB;
+                fpu_req.op_mod = 0;
+                fpu_req.operands[0] = a_iq; // A[p,j]
+                fpu_req.operands[1] = cpu_rdata_i;
+                fpu_req.operands[2] = cpu_fwd_data_i;
+                fpu_in_valid = 1;
+                if(j + (j+1 == q) < (W * (k + 1)))begin
+                    next_j = j + 1 + (j+1 == q);
+                    next_w = w + 1 + (j+1 == q);
+                    next_r = ~r;
+                end else if (i + (i + 1 == p) < m) begin
+                    next_i = i + 1 + (i + 1 == p);
+                    next_j = k * W;
+                    next_w = 0;
+                    next_r = ~r; //TODO: IS THIS RIGHT OR SHOULD IT BE 0?
+                end else begin
+                    next_i = 0;
+                    next_j = k * W;
+                    next_w = 0;
+                    next_r = ~r;
+                    next_k = k + 1;
+                    next_state = S_PIV_ROW_P;
+                end
+            end
         end
     endcase
 end
