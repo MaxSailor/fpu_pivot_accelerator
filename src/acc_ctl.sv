@@ -52,7 +52,7 @@ typedef enum logic[1:0] {
 
 // registers
 state_t            state,    next_state;    // FSM state
-reg_addr_t         x_s,      next_x_s;      // regfile reg where first matrix element is stored
+reg_addr_t         x_s,      next_x_s;      // regfile reg where first pivot row element of current band is stored
 reg_addr_t         W,        next_W;        // band width = nbr of regfile regs used to store partial pivot row
 data_t             M,        next_M;        // num matrix rows
 data_t             N,        next_N;        // num matrix cols
