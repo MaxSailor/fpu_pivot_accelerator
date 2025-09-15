@@ -217,7 +217,7 @@ always_comb begin : acc_state_machine
                     next_j = k * W;
                     next_w = 0;
                     next_r = ~r; // TODO: IS THIS RIGHT OR SHOULD IT BE 0? Also if R > 2?
-                end else if((k+1) * W < n) begin
+                end else if((k+1) * W < N) begin
                     next_i = 0;
                     next_j = k * W;
                     next_w = 0;
