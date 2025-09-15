@@ -13,7 +13,7 @@ module acc_ctl
     input  acc_instr_t       cpu_acc_instr_i,
     input  logic             cpu_acc_instr_valid_i,
     output logic             cpu_busy_o,
-    output logic             cpu_rready_o,
+    output logic             cpu_ready_o,
     output reg_addr_t        cpu_raddr_o,
     output reg_addr_t        cpu_waddr_o,
     output data_t            cpu_wdata_o,
@@ -39,38 +39,38 @@ module acc_ctl
     input  fpu_resp_t        fpu_resp_i
 );
 
-enum logic[1:0] {
+// types
+typedef logic [$clog2(R)-1:0] curr_reg_counter_t;
+typedef logic [$clog2(MAX_W)-1:0] piv_reg_counter_t;
+
+typedef enum logic[1:0] {
     S_FPU,
     S_PIV_ROW_P,
     S_PIV_CHANGE_ROW,
     S_PIV_ROW_I
-} state, next_state;
+} state_t;
 
-typedef logic [$clog2(R)-1:0] curr_reg_counter_t;
-typedef logic [$clog2(MAX_W)-1:0] piv_reg_counter_t;
-
-reg_addr_t x_s, next_x_s, W, next_W;
-data_t M, N, p, q, a_pq_inv, a_iq, next_M, next_N, next_p, next_q, next_a_pq_inv, next_a_iq;
-data_counter_t i, j, k, next_i, next_j, next_k;
-curr_reg_counter_t r, next_r;
-piv_reg_counter_t w, next_w;
-
-fpu_req_t fpu_req;
-
-addr_t cpu_raddr;
-logic fpu_in_valid, cpu_rready;
-
-assign cpu_raddr_o = cpu_raddr;
-assign fpu_in_valid_o = fpu_in_valid;
-
+// registers
+state_t            state,    next_state;    // FSM state
+reg_addr_t         x_s,      next_x_s;      // regfile reg where first matrix element is stored
+reg_addr_t         W,        next_W;        // band width = nbr of regfile regs used to store partial pivot row
+data_t             M,        next_M;        // num matrix rows
+data_t             N,        next_N;        // num matrix cols
+data_t             p,        next_p;        // pivot row index
+data_t             q,        next_q;        // pivot col index
+data_t             a_pq_inv, next_a_pq_inv; // reciprocal pivot element 1/A[p,q]
+data_t             a_iq,     next_a_iq;     // current row pivot col element
+data_counter_t     i,        next_i;        // row index
+data_counter_t     j,        next_j;        // col index
+data_counter_t     k,        next_k;        // band index
+piv_reg_counter_t  w,        next_w;        // pivot row regfile index offset from x_s (x_(s+w))
+curr_reg_counter_t r,        next_r;        // current row regfile index offset from x_(s+W) (x_(s+W+r))
 
 
 assign cpu_busy_o = fpu_busy_i;
-assign cpu_ready_o = !fpu_busy_i && !cpu_acc_instr_valid_i; // ?
-
-assign fpu_req_o = fpu_req;
-
-assign fpu_flush_o = 0; // no flush support yet
+assign cpu_ready_o = !fpu_busy_i && !cpu_acc_instr_valid_i; // TODO: ?
+assign fpu_flush_o = 0; // TODO: no flush support yet
+assign fpu_req_o.simd_mask = '0; // no simd support
 
 // FPU output handling
 assign fpu_out_ready_o = 1; // always ready to accept output
@@ -80,7 +80,7 @@ assign cpu_waddr_o = fpu_resp_i.tag;
 
 
 always_ff @(clk_i) begin
-    if (rst_ni) begin
+    if (!rst_ni) begin
         state <= S_FPU;
         x_s <= 0;
         W <= DEFAULT_W;
@@ -126,9 +126,8 @@ always_comb begin : acc_state_machine
     next_a_iq = a_iq;
     next_p = p;
     next_q = q;
-    fpu_req = '0;
-    fpu_in_valid = 0;
-    fpu_req.simd_mask = '0; // default to no lanes active
+    fpu_req_o = '0;
+    fpu_in_valid_o = 0;
 
     unique case (state)
         S_FPU: begin
@@ -158,16 +157,16 @@ always_comb begin : acc_state_machine
                 end else begin
                     // Vanilla FPU operation
 
-                    fpu_req.tag = cpu_acc_instr_i.rd; // use destination reg as tag
+                    fpu_req_o.tag = cpu_acc_instr_i.rd; // use destination reg as tag
 
-                    fpu_req.op = cpu_acc_instr_i.operation.fpu_operation;
-                    fpu_req.op_mod = cpu_acc_instr_i.op_mod_i;
+                    fpu_req_o.op = cpu_acc_instr_i.operation.fpu_operation;
+                    fpu_req_o.op_mod = cpu_acc_instr_i.op_mod_i;
 
-                    fpu_req.operands[0] = cpu_acc_instr_i.op0;
-                    fpu_req.operands[1] = cpu_acc_instr_i.op1;
-                    fpu_req.operands[2] = cpu_acc_instr_i.op2;
+                    fpu_req_o.operands[0] = cpu_acc_instr_i.op0;
+                    fpu_req_o.operands[1] = cpu_acc_instr_i.op1;
+                    fpu_req_o.operands[2] = cpu_acc_instr_i.op2;
 
-                    fpu_in_valid = 1;
+                    fpu_in_valid_o = 1;
 
                 end
             end
@@ -175,13 +174,13 @@ always_comb begin : acc_state_machine
         end
         S_PIV_ROW_P: begin
             if (cpu_fwd_valid_i) begin
-                fpu_req.tag = x_s + w;
-                fpu_req.op = MUL;
-                fpu_req.op_mod = 0;
-                fpu_req.operands[0] = cpu_fwd_data_i; // A[p,j]
-                fpu_req.operands[1] = a_pq_inv;
-                fpu_req.operands[2] = 0;
-                fpu_in_valid = 1;
+                fpu_req_o.tag = x_s + w;
+                fpu_req_o.op = MUL;
+                fpu_req_o.op_mod = 0;
+                fpu_req_o.operands[0] = cpu_fwd_data_i; // A[p,j]
+                fpu_req_o.operands[1] = a_pq_inv;
+                fpu_req_o.operands[2] = 0;
+                fpu_in_valid_o = 1;
                 next_state = S_PIV_CHANGE_ROW;
                 if (j < k * W) begin
                     next_j = j + 1;
@@ -194,30 +193,30 @@ always_comb begin : acc_state_machine
             end
         end
         S_PIV_CHANGE_ROW: begin
-            if(cpu_fwd_valid_i) begin
+            if (cpu_fwd_valid_i) begin
                 next_a_iq = cpu_fwd_data_i;
                 next_state = S_PIV_ROW_I;
             end
         end
         S_PIV_ROW_I: begin
-            raddr_o = x_s + w;
-            if (cpu_rvalid_i && cpu_fwd_valid_i)begin
-                fpu_req.tag = x_s + w;
-                fpu_req.op = FNMSUB;
-                fpu_req.op_mod = 0;
-                fpu_req.operands[0] = a_iq; // A[p,j]
-                fpu_req.operands[1] = cpu_rdata_i;
-                fpu_req.operands[2] = cpu_fwd_data_i;
-                fpu_in_valid = 1;
-                if(j + (j+1 == q) < (W * (k + 1)))begin
+            cpu_raddr_o = x_s + w;
+            if (cpu_rvalid_i && cpu_fwd_valid_i) begin
+                fpu_req_o.tag = x_s + w;
+                fpu_req_o.op = FNMSUB;
+                fpu_req_o.op_mod = 0;
+                fpu_req_o.operands[0] = a_iq; // A[p,j]
+                fpu_req_o.operands[1] = cpu_rdata_i;
+                fpu_req_o.operands[2] = cpu_fwd_data_i;
+                fpu_in_valid_o = 1;
+                if (j + (j+1 == q) < (W * (k + 1))) begin
                     next_j = j + 1 + (j+1 == q);
                     next_w = w + 1 + (j+1 == q);
                     next_r = ~r;
-                end else if (i + (i + 1 == p) < m) begin
+                end else if (i + (i + 1 == p) < M) begin
                     next_i = i + 1 + (i + 1 == p);
                     next_j = k * W;
                     next_w = 0;
-                    next_r = ~r; //TODO: IS THIS RIGHT OR SHOULD IT BE 0?
+                    next_r = ~r; // TODO: IS THIS RIGHT OR SHOULD IT BE 0? Also if R > 2?
                 end else begin
                     next_i = 0;
                     next_j = k * W;

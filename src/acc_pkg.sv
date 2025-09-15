@@ -16,7 +16,6 @@ package acc_pkg;
     OPERATION_PREPIV,
     OPERATION_PIV,
     OPERATION_SET_W
-    // TODO: add more accelerator-specific operations?
   } acc_operation_e;
 
   typedef union packed {
