@@ -2,11 +2,10 @@ module acc_ctl
     import acc_pkg::*;
     import fpnew_pkg::*;
 #(
-    parameter integer W = 8,
+    parameter integer DEFAULT_W = 8,
+    parameter integer MAX_W = 32,
     parameter integer R = 2
-
-)
-(
+) (
     input logic rst_ni,
     input logic clk_i,
 
@@ -48,9 +47,9 @@ enum logic[1:0] {
 } state, next_state;
 
 typedef logic [$clog2(R)-1:0] curr_reg_counter_t;
-typedef logic [$clog2(W)-1:0] piv_reg_counter_t;
+typedef logic [$clog2(MAX_W)-1:0] piv_reg_counter_t;
 
-reg_addr_t x_s, next_x_s;
+reg_addr_t x_s, next_x_s, W, next_W;
 data_t M, N, p, q, a_pq_inv, a_iq, next_M, next_N, next_p, next_q, next_a_pq_inv, next_a_iq;
 data_counter_t i, j, k, next_i, next_j, next_k;
 curr_reg_counter_t r, next_r;
@@ -84,6 +83,7 @@ always_ff @(clk_i) begin
     if (rst_ni) begin
         state <= S_FPU;
         x_s <= 0;
+        W <= DEFAULT_W;
         M <= 0;
         N <= 0;
         p <= 0;
@@ -96,6 +96,7 @@ always_ff @(clk_i) begin
     end else begin
         state <= next_state;
         x_s <= next_x_s;
+        W <= next_W;
         M <= next_M;
         N <= next_N;
         p <= next_p;
@@ -113,6 +114,7 @@ always_comb begin : acc_state_machine
     // defaults
     next_state = state;
     next_x_s = x_s;
+    next_W = W;
     next_M = M;
     next_N = N;
     next_i = i;
@@ -136,6 +138,7 @@ always_comb begin : acc_state_machine
                     // Accelerator operation
 
                     unique case (cpu_acc_instr_i.operation.acc_operation)
+                        OPERATION_SET_W: next_W = cpu_acc_instr_i.op0;
                         OPERATION_PREPIV: begin
                             next_x_s = cpu_acc_instr_i.op0;
                             next_M = cpu_acc_instr_i.op1;
@@ -219,7 +222,7 @@ always_comb begin : acc_state_machine
                     next_i = 0;
                     next_j = k * W;
                     next_w = 0;
-                    next_r = ~r;
+                    next_r = ~r; // TODO: fix if R > 2
                     next_k = k + 1;
                     next_state = S_PIV_ROW_P;
                 end

@@ -12,9 +12,10 @@ package acc_pkg;
   typedef logic [ADDR_WIDTH-1:0] tag_t;
   typedef logic mask_t;
 
-  typedef enum logic [2:0] {
+  typedef enum logic [1:0] {
     OPERATION_PREPIV,
-    OPERATION_PIV
+    OPERATION_PIV,
+    OPERATION_SET_W
     // TODO: add more accelerator-specific operations?
   } acc_operation_e;
 
