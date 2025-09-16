@@ -22,7 +22,7 @@ module cpu_emu_tb;
   logic                   busy;
   logic                   ready;
 
-  // regfile interface
+  // x interface
   reg_addr_t              raddr;
   reg_addr_t              waddr;
   data_t                  wdata;
@@ -30,7 +30,7 @@ module cpu_emu_tb;
   data_t                  rdata;
   logic                   rvalid;
 
-  // writeback regfile interface
+  // writeback x interface
   reg_addr_t wb_waddr;
   data_t wb_wdata;
   logic wb_wren;
@@ -39,9 +39,9 @@ module cpu_emu_tb;
   data_t                  fwd_data;
   logic                   fwd_valid;
 
-  data_t      [     31:0] regfile;
+  data_t      x [31];
 
-  data_t      [(M*N)-1:0] tableau_mem;
+  data_t      tableau_mem [(M*N)];
 
   typedef struct packed {
     addr_t addr;
@@ -61,9 +61,9 @@ module cpu_emu_tb;
     INVALID
   } instr_type_t;
 
-  instr_t instr_dc, instr_ex, instr_wb;
+  instr_t instr_if, instr_dc, instr_ex, instr_wb;
 
-  instr_type_t type_dc, type_ex, type_wb;
+  instr_type_t type_if, type_dc, type_ex, type_wb;
 
   // Instantiate the DUT
   acc_top dut (
@@ -85,14 +85,14 @@ module cpu_emu_tb;
 
   // Clock generation
   initial begin
-    clk = 0;
+    clk = 1;
     forever #5 clk = ~clk;  // 100MHz clock
   end
 
   // Reset generation
   initial begin
     rst_n = 0;
-    #15;
+    #10;
     rst_n = 1;
   end
 
@@ -100,12 +100,12 @@ module cpu_emu_tb;
 
   initial begin : regfile_init
     for (int i = 0; i < 32; i++) begin
-      regfile[i] = '0;
+      x[i] = '0;
     end
   end
 
   initial begin //TODO: läs in rätt
-    tableau_mem[4:0] = '{
+    tableau_mem[0:4] = '{
         32'h41500000,
         32'h40c00000,
         32'h40500000,
@@ -144,170 +144,178 @@ module cpu_emu_tb;
 
   // Test sequence
   initial begin : decode_stage
-
+    type_if = INVALID;
+    type_dc = INVALID;
+    type_ex = INVALID;
+    type_wb = INVALID;
 
     // Wait for reset deassertion
     @(posedge rst_n);
     #10;
 
-    instr_dc.mem = '{
+    instr_if.mem = '{
         addr: 5'd2,
         data: 32'd4,  //A[p,w]
         read: 0
     };
-    type_dc = IMM;
+    type_if = IMM;
     @(posedge clk);
 
-    instr_dc.mem = '{
+    instr_if.mem = '{
         addr: 5'd3,
         data: 32'd5,  //A[p,w]
         read: 0
     };
-    type_dc = IMM;
+    type_if = IMM;
     @(posedge clk);
 
-    instr_dc.mem = '{
+    instr_if.mem = '{
         addr: 5'd4,
         data: 32'd0,  //A[p,w]
         read: 0
     };
-    type_dc = IMM;
+    type_if = IMM;
     @(posedge clk);
 
-    instr_dc.mem = '{
+    instr_if.mem = '{
         addr: 5'd5,
         data: 32'd0,  //A[p,w]
         read: 0
     };
-    type_dc = IMM;
+    type_if = IMM;
     @(posedge clk);
 
-    instr_dc.mem = '{
+    instr_if.mem = '{
         addr: 5'd6,
         data: 32'd8,  //A[p,w]
         read: 0
     };
-    type_dc = IMM;
+    type_if = IMM;
     @(posedge clk);
-    type_dc = INVALID;
+    type_if = INVALID;
 
     @(posedge clk);
     @(posedge clk);
     @(posedge clk);
 
-    instr_dc.mem = '{
+    instr_if.mem = '{
         addr: 5'd7,
-        data: regfile[3]*regfile[4]+regfile[5],  //A[p,w]
+        data: x[3]*x[4]+x[5],  //A[p,w]
         read: 1
     };
-    type_dc = MEM;
+    type_if = MEM;
+    @(posedge clk);
+    type_if = INVALID;
+    @(posedge clk);
+    @(posedge clk);
     @(posedge clk);
 
 
-    instr_dc.acc = '{
+
+    instr_if.acc = '{
         operation: '{fpu_operation: DIV},
         acc_op: 1'b0,  // FPU operation
         op_mod_i: 1'b0,
         op0: 32'h00000000,  // Not used
-        op1: 32'h3F800000,  // b = 1.0 (FP32)
-        op2: regfile[7],  // c = 2.0 (FP32)
+        op2: x[7],  // b = 1.0 (FP32)
+        op1: 32'h3F800000,  // c = 2.0 (FP32)
         rd: 5'd7  // Destination register
     };
-    type_dc = ACC;
+    type_if = ACC;
 
     @(posedge clk);
-    instr_dc = '0;
-    type_dc  = INVALID;
+    instr_if = '0;
+    type_if  = INVALID;
     wait (!busy);
 
     @(posedge clk);
 
     // Issue prepiv
-    instr_dc.acc = '{
+    instr_if.acc = '{
         operation: '{acc_operation: OPERATION_PREPIV},
         acc_op: 1'b1,  // ACC operation
         op_mod_i: 1'b0,
-        op0: regfile[6],  // x_s
-        op1: regfile[2],  // m
-        op2: regfile[3],  // n
+        op0: x[6],  // x_s
+        op1: x[2],  // m
+        op2: x[3],  // n
         rd: 5'd0  // Destination register
     };
-    type_dc = ACC;
+    type_if = ACC;
     @(posedge clk);
 
     // Issue pivot
-    instr_dc.acc = '{
+    instr_if.acc = '{
         operation: '{acc_operation: OPERATION_PIV},
         acc_op: 1'b1,  // ACC operation
         op_mod_i: 1'b0,
-        op0: regfile[4],  // p
-        op1: regfile[5],  // q
-        op2: regfile[7],  // a_pq_inv
+        op0: x[4],  // p
+        op1: x[5],  // q
+        op2: x[7],  // a_pq_inv
         rd: 5'd0  // Destination register
     };
-    type_dc = ACC;
+    type_if = ACC;
     @(posedge clk);
 
     //LOADS AND STORES
     for (
-        int w = 0, logic r = 0, int i = 0, int j = 0, int k = 0; k * W < regfile[3]; k++
+        int w = 0, logic r = 0, int i = 0, int j = 0, int k = 0; k * W < x[3]; k++
     ) begin : main_loop
-      for (w = 0, j = k * W; w < W && j < regfile[3]; w++, j++) begin : piv_row
+      for (w = 0, j = k * W; w < W && j < x[3]; w++, j++) begin : piv_row
         //TODO: handle case wheen n < w and k never not 0
         if (k > 0) begin
-          instr_dc.mem = '{
-              addr: regfile[4] * regfile[3] + j,
-              data: regfile[regfile[6]+w],  //A[p,w]
+          instr_if.mem = '{
+              addr: x[4] * x[3] + j,
+              data: x[x[6]+w],  //A[p,w]
               read: 0
           };
-          type_dc = MEM;
+          type_if = MEM;
           @(posedge clk);
         end
 
-        instr_dc.mem = '{
-            addr: regfile[6] + w,
-            data: regfile[4] * regfile[3] + j,  //A[p,w]
+        instr_if.mem = '{
+            addr: x[6] + w,
+            data: x[4] * x[3] + j,  //A[p,w]
             read: 1
         };
-        type_dc = MEM;
+        type_if = MEM;
         @(posedge clk);
       end
 
-      for (int i = 0; i < regfile[2]; i++) begin : other_rows
-        if (i == regfile[4]) continue;
-        instr_dc.mem = '{
+      for (i = 0; i < x[2]; i++) begin : other_rows
+        if (i == x[4]) continue;
+        instr_if.mem = '{
             addr: 0,
-            data: i * regfile[3] + regfile[5],  //A[i,q]
+            data: i * x[3] + x[5],  //A[i,q]
             read: 1
         };
-        type_dc = MEM;
+        type_if = MEM;
         @(posedge clk);
 
-        for (w = 0, r = 0, j = k * W; w < W && j < regfile[3]; w++, r = ~r) begin : row_i
-          if (j == regfile[5]) continue;
+        for (w = 0, r = 0, j = k * W; w < W && j < x[3]; w++, r = ~r) begin : row_i
+          if (j == x[5]) continue;
 
           if (w > 2) begin
-            instr_dc.mem = '{
-                addr: i * regfile[3] + j,
-                data: regfile[regfile[6]+W+r],  //A[p,w]
+            instr_if.mem = '{
+                addr: i * x[3] + j,
+                data: x[x[6]+W+r],  //A[p,w]
                 read: 0
             };
-            type_dc = MEM;
+            type_if = MEM;
             @(posedge clk);
           end
 
-          instr_dc.mem = '{
-              addr: regfile[6] + W + r,
-              data: regfile[i] * regfile[3] + w,  //A[p,w]
+          instr_if.mem = '{
+              addr: x[6] + W + r,
+              data: x[i] * x[3] + w,  //A[p,w]
               read: 1
           };
-          type_dc = MEM;
+          type_if = MEM;
           @(posedge clk);
         end
       end
     end
 
-    type_dc = INVALID;
+    type_if = INVALID;
   end
 
   integer invalids = 0;
@@ -319,11 +327,14 @@ module cpu_emu_tb;
   end
 
   always_ff @(posedge clk) begin
+    #1;
     instr_wb <= instr_ex;
     instr_ex <= instr_dc;
+    instr_dc <= instr_if;
 
     type_wb  <= type_ex;
     type_ex  <= type_dc;
+    type_dc  <= type_if;
 
     if(type_wb == MEM && !instr_wb.mem.read) begin
       tableau_mem[instr_wb.mem.addr] <= instr_wb.mem.data;
@@ -369,9 +380,9 @@ module cpu_emu_tb;
       invalids++;
       if (invalids > 50) begin
         $display("Timeout! \n");
-        for (int i = 0; i < regfile[2]; i++) begin
-          for (int j = 0; j < regfile[3]; j++) begin
-            $display("%h, ", tableau_mem[i*regfile[3]+j]);
+        for (int i = 0; i < x[2]; i++) begin
+          for (int j = 0; j < x[3]; j++) begin
+            $display("%h, ", tableau_mem[i*x[3]+j]);
           end
           $display("\n");
         end
@@ -382,27 +393,27 @@ module cpu_emu_tb;
 
   // Wait for the accelerator to produce output
 
-    always_ff@(negedge clk) begin
-      if (wren && waddr != 0) begin
-        regfile[waddr] <= wdata;
-        // TODO check result vs expected
-      end
-
-      if (wb_wren && wb_waddr != 0)begin
-        regfile[wb_waddr] <= wb_wdata;
-      end
-
+  always_ff@(negedge clk) begin
+    if (wren && waddr != 0) begin
+      x[waddr] <= wdata;
+      // TODO check result vs expected
     end
 
-    always_comb begin
-      rdata  = regfile[raddr];
-      rvalid = raddr != 0;
+    if (wb_wren && wb_waddr != 0)begin
+      x[wb_waddr] <= wb_wdata;
     end
+
+  end
+
+  always_comb begin
+    rdata  = x[raddr];
+    rvalid = raddr != 0;
+  end
 
 
 
   // always_comb begin : regfile_reads
-  //   rdata  = regfile[raddr];
+  //   rdata  = x[raddr];
   //   rvalid = raddr != 0;
   // end
 

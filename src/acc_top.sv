@@ -128,7 +128,7 @@ acc_ctl acc_ctl (
 // FPU instance
 fpnew_top #(
     .Features(RV32F),
-    .Implementation(CUSTOM_SNITCH),
+    .Implementation(DEFAULT_SNITCH),
     .TagType(tag_t)
 ) fpu (
     .clk_i(clk_i),

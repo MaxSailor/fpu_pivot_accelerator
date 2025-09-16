@@ -1,0 +1,284 @@
+[*]
+[*] GTKWave Analyzer v3.3.121 (w)1999-2024 BSI
+[*] Tue Sep 16 18:26:48 2025
+[*]
+[dumpfile] "/home/max/git/fpu_pivot_accelerator/cpu_emu_tb.vcd"
+[dumpfile_mtime] "Tue Sep 16 18:17:54 2025"
+[dumpfile_size] 278644
+[savefile] "/home/max/git/fpu_pivot_accelerator/literally do not know.gtkw"
+[timestart] 0
+[size] 3374 1361
+[pos] -1 -1
+*-13.800000 155450 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] cpu_emu_tb.
+[treeopen] cpu_emu_tb.acc_instr.
+[treeopen] cpu_emu_tb.decode_stage.
+[treeopen] cpu_emu_tb.decode_stage.unnamedblk2.
+[treeopen] cpu_emu_tb.instr_dc.
+[treeopen] cpu_emu_tb.instr_dc.acc.
+[sst_width] 278
+[signals_width] 321
+[sst_expanded] 1
+[sst_vpaned_height] 422
+@28
+cpu_emu_tb.clk
+cpu_emu_tb.rst_n
+@200
+-
+@c00200
+-Memory
+@200
+-Memory
+@40020
+[color] 5
+cpu_emu_tb.tableau_mem[0][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[1][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[2][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[3][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[4][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[5][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[6][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[7][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[8][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[9][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[10][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[11][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[12][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[13][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[14][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[15][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[16][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[17][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[18][31:0]
+[color] 5
+cpu_emu_tb.tableau_mem[19][31:0]
+@1401200
+-Memory
+@200
+-
+@c00200
+-Regfile
+@24
+cpu_emu_tb.x[0][31:0]
+cpu_emu_tb.x[1][31:0]
+cpu_emu_tb.x[2][31:0]
+cpu_emu_tb.x[3][31:0]
+cpu_emu_tb.x[4][31:0]
+cpu_emu_tb.x[5][31:0]
+cpu_emu_tb.x[6][31:0]
+@200
+-
+@40020
+cpu_emu_tb.x[7][31:0]
+cpu_emu_tb.x[8][31:0]
+cpu_emu_tb.x[9][31:0]
+cpu_emu_tb.x[10][31:0]
+cpu_emu_tb.x[11][31:0]
+cpu_emu_tb.x[12][31:0]
+cpu_emu_tb.x[13][31:0]
+cpu_emu_tb.x[14][31:0]
+cpu_emu_tb.x[15][31:0]
+cpu_emu_tb.x[16][31:0]
+@c40020
+cpu_emu_tb.x[17][31:0]
+@28
+(0)cpu_emu_tb.x[17][31:0]
+(1)cpu_emu_tb.x[17][31:0]
+(2)cpu_emu_tb.x[17][31:0]
+(3)cpu_emu_tb.x[17][31:0]
+(4)cpu_emu_tb.x[17][31:0]
+(5)cpu_emu_tb.x[17][31:0]
+(6)cpu_emu_tb.x[17][31:0]
+(7)cpu_emu_tb.x[17][31:0]
+(8)cpu_emu_tb.x[17][31:0]
+(9)cpu_emu_tb.x[17][31:0]
+(10)cpu_emu_tb.x[17][31:0]
+(11)cpu_emu_tb.x[17][31:0]
+(12)cpu_emu_tb.x[17][31:0]
+(13)cpu_emu_tb.x[17][31:0]
+(14)cpu_emu_tb.x[17][31:0]
+(15)cpu_emu_tb.x[17][31:0]
+(16)cpu_emu_tb.x[17][31:0]
+(17)cpu_emu_tb.x[17][31:0]
+(18)cpu_emu_tb.x[17][31:0]
+(19)cpu_emu_tb.x[17][31:0]
+(20)cpu_emu_tb.x[17][31:0]
+(21)cpu_emu_tb.x[17][31:0]
+(22)cpu_emu_tb.x[17][31:0]
+(23)cpu_emu_tb.x[17][31:0]
+(24)cpu_emu_tb.x[17][31:0]
+(25)cpu_emu_tb.x[17][31:0]
+(26)cpu_emu_tb.x[17][31:0]
+(27)cpu_emu_tb.x[17][31:0]
+(28)cpu_emu_tb.x[17][31:0]
+(29)cpu_emu_tb.x[17][31:0]
+(30)cpu_emu_tb.x[17][31:0]
+(31)cpu_emu_tb.x[17][31:0]
+@1401200
+-group_end
+@40020
+cpu_emu_tb.x[18][31:0]
+@1401200
+-Regfile
+@200
+-
+-Acc outputs
+@28
+cpu_emu_tb.busy
+@22
+cpu_emu_tb.waddr[4:0]
+@40020
+cpu_emu_tb.wdata[31:0]
+@28
+cpu_emu_tb.wren
+@200
+-
+-Acc input
+@28
+cpu_emu_tb.acc_instr_valid
+cpu_emu_tb.acc_instr.acc_op
+@100000028
+cpu_emu_tb.acc_instr.operation.acc_operation[3:0]
+@100002028
+^1 /home/max/git/fpu_pivot_accelerator/type_fpu_op_enum.gtkw
+cpu_emu_tb.acc_instr.operation.fpu_operation[3:0]
+@40020
+cpu_emu_tb.acc_instr.op0[31:0]
+cpu_emu_tb.acc_instr.op1[31:0]
+cpu_emu_tb.acc_instr.op2[31:0]
+@28
+cpu_emu_tb.acc_instr.op_mod_i
+@22
+cpu_emu_tb.acc_instr.rd[4:0]
+@200
+-
+-Acc inputs
+-Reg_signals
+@22
+cpu_emu_tb.wb_waddr[4:0]
+cpu_emu_tb.wb_wdata[31:0]
+@28
+cpu_emu_tb.wb_wren
+@200
+-
+-Counters
+@22
+cpu_emu_tb.decode_stage.unnamedblk2.i[31:0]
+cpu_emu_tb.decode_stage.unnamedblk2.j[31:0]
+cpu_emu_tb.decode_stage.unnamedblk2.k[31:0]
+@28
+cpu_emu_tb.decode_stage.unnamedblk2.r
+@22
+cpu_emu_tb.decode_stage.unnamedblk2.w[31:0]
+@200
+-
+-Instructions
+@800200
+-Instructions
+-Decode stage
+@100002028
+[color] 3
+^2 /home/max/git/fpu_pivot_accelerator/type_dc_enum.gtkw
+cpu_emu_tb.type_dc[1:0]
+@200
+-
+@22
+[color] 3
+cpu_emu_tb.instr_dc.acc.op0[31:0]
+[color] 3
+cpu_emu_tb.instr_dc.acc.op1[31:0]
+[color] 3
+cpu_emu_tb.instr_dc.acc.op2[31:0]
+[color] 3
+cpu_emu_tb.instr_dc.acc.rd[4:0]
+@200
+-
+@22
+[color] 3
+cpu_emu_tb.instr_dc.mem.addr[31:0]
+[color] 3
+cpu_emu_tb.instr_dc.mem.data[31:0]
+@28
+[color] 3
+cpu_emu_tb.instr_dc.mem.read
+@1000200
+-Decode stage
+@200
+-
+@100002028
+[color] 1
+^2 /home/max/git/fpu_pivot_accelerator/type_dc_enum.gtkw
+cpu_emu_tb.type_ex[1:0]
+@200
+-
+@22
+[color] 1
+cpu_emu_tb.instr_ex.acc.op0[31:0]
+[color] 1
+cpu_emu_tb.instr_ex.acc.op1[31:0]
+[color] 1
+cpu_emu_tb.instr_ex.acc.op2[31:0]
+[color] 1
+cpu_emu_tb.instr_ex.acc.rd[4:0]
+@200
+-
+@22
+[color] 1
+cpu_emu_tb.instr_ex.mem.addr[31:0]
+[color] 1
+cpu_emu_tb.instr_ex.mem.data[31:0]
+@28
+[color] 1
+cpu_emu_tb.instr_ex.mem.read
+@200
+-
+@100002028
+[color] 6
+^2 /home/max/git/fpu_pivot_accelerator/type_dc_enum.gtkw
+cpu_emu_tb.type_wb[1:0]
+@200
+-
+@22
+[color] 6
+cpu_emu_tb.instr_wb.acc.op0[31:0]
+[color] 6
+cpu_emu_tb.instr_wb.acc.op1[31:0]
+[color] 6
+cpu_emu_tb.instr_wb.acc.op2[31:0]
+[color] 6
+cpu_emu_tb.instr_wb.acc.rd[4:0]
+@200
+-
+@22
+[color] 6
+cpu_emu_tb.instr_wb.mem.addr[31:0]
+[color] 6
+cpu_emu_tb.instr_wb.mem.data[31:0]
+@28
+[color] 6
+cpu_emu_tb.instr_wb.mem.read
+@1000200
+-Instructions
+@200
+-
+-FPU signals
+[pattern_trace] 1
+[pattern_trace] 0
