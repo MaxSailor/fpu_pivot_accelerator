@@ -92,7 +92,7 @@ module cpu_emu_tb;
   // Reset generation
   initial begin
     rst_n = 0;
-    #10;
+    #20;
     rst_n = 1;
   end
 
@@ -216,9 +216,9 @@ module cpu_emu_tb;
         operation: '{fpu_operation: DIV},
         acc_op: 1'b0,  // FPU operation
         op_mod_i: 1'b0,
-        op0: 32'h00000000,  // Not used
-        op2: x[7],  // b = 1.0 (FP32)
-        op1: 32'h3F800000,  // c = 2.0 (FP32)
+        op2: 32'h00000000,  // Not used
+        op1: x[7],  // b = 1.0 (FP32)
+        op0: 32'h3F800000,  // c = 2.0 (FP32)
         rd: 5'd7  // Destination register
     };
     type_if = ACC;
@@ -226,7 +226,7 @@ module cpu_emu_tb;
     @(posedge clk);
     instr_if = '0;
     type_if  = INVALID;
-    wait (!busy);
+    @(negedge busy);
 
     @(posedge clk);
 
@@ -327,7 +327,6 @@ module cpu_emu_tb;
   end
 
   always_ff @(posedge clk) begin
-    #1;
     instr_wb <= instr_ex;
     instr_ex <= instr_dc;
     instr_dc <= instr_if;
@@ -339,25 +338,24 @@ module cpu_emu_tb;
     if(type_wb == MEM && !instr_wb.mem.read) begin
       tableau_mem[instr_wb.mem.addr] <= instr_wb.mem.data;
     end
-
   end
 
   always_comb begin
-      acc_instr = '0;
+      acc_instr = instr_ex.acc;
       acc_instr_valid = 0;
       fwd_data  = '0;
       fwd_valid = 0;
       wb_waddr = '0;
       wb_wdata = '0;
       wb_wren = 0;
-
-      if (type_ex == ACC) begin
-        acc_instr = instr_ex.acc;
-        acc_instr_valid = 1;
-      end else begin
-        acc_instr = '0;
-        acc_instr_valid = 0;
-      end
+      acc_instr_valid = (type_ex == ACC);
+      // if (type_ex == ACC) begin
+      //   acc_instr = instr_ex.acc;
+      //   acc_instr_valid = 1;
+      // end else begin
+      //   acc_instr = '0;
+      //   acc_instr_valid = 0;
+      // end
 
       if (type_wb == MEM) begin
         if (instr_wb.mem.read) begin
@@ -375,7 +373,7 @@ module cpu_emu_tb;
         wb_wren = 1;
       end
   end
-  initial begin
+  initial begin: timeout
     forever @ (posedge clk) if (type_wb == INVALID) begin
       invalids++;
       if (invalids > 50) begin
