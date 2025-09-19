@@ -1,2 +1,3 @@
 *.vcd
 obj_dir/
+Signals.gtkw

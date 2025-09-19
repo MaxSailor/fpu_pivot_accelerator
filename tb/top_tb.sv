@@ -47,14 +47,14 @@ module top_tb;
 
   // Clock generation
   initial begin
-    clk = 0;
+    clk = 1;
     forever #5 clk = ~clk;  // 100MHz clock
   end
 
   // Reset generation
   initial begin
     rst_n = 0;
-    #15;
+    #20;
     rst_n = 1;
   end
 
@@ -97,6 +97,21 @@ module top_tb;
     acc_instr_valid = 1;
     @(posedge clk);
     acc_instr_valid = 0;
+
+    acc_instr = '{
+        operation: '{fpu_operation: DIV},
+        acc_op: 1'b0,  // FPU operation
+        op_mod_i: 1'b0,
+        op2: 32'h00000000,  // Not used
+        op1: 32'h41500000,  // b = 1.0 (FP32)
+        op0: 32'h3F800000,  // c = 2.0 (FP32)
+        rd: 5'd7  // Destination register
+    };
+
+    acc_instr_valid = 1;
+    @(posedge clk);
+    acc_instr_valid = 0;
+    wait(!busy);
 
   end
 

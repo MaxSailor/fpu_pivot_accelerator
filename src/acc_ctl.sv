@@ -67,6 +67,7 @@ piv_reg_counter_t  w,        next_w;        // pivot row regfile index offset fr
 curr_reg_counter_t r,        next_r;        // current row regfile index offset from x_(s+W) (x_(s+W+r))
 
 
+
 assign cpu_busy_o = fpu_busy_i;
 assign cpu_ready_o = !fpu_busy_i && !cpu_acc_instr_valid_i; // TODO: ?
 assign fpu_flush_o = 0; // TODO: no flush support yet
@@ -79,7 +80,7 @@ assign cpu_wdata_o = fpu_resp_i.result;
 assign cpu_waddr_o = fpu_resp_i.tag;
 
 
-always_ff @(clk_i) begin
+always_ff @(posedge clk_i) begin
     if (!rst_ni) begin
         state <= S_FPU;
         x_s <= 0;
@@ -93,6 +94,8 @@ always_ff @(clk_i) begin
         i <= 0;
         j <= 0;
         k <= 0;
+        r <= 0;
+        w <= 0;
     end else begin
         state <= next_state;
         x_s <= next_x_s;
@@ -106,6 +109,8 @@ always_ff @(clk_i) begin
         i <= next_i;
         j <= next_j;
         k <= next_k;
+        r <= next_r;
+        w <= next_w;
     end
 end
 
@@ -181,14 +186,19 @@ always_comb begin : acc_state_machine
                 fpu_req_o.operands[1] = a_pq_inv;
                 fpu_req_o.operands[2] = 0;
                 fpu_in_valid_o = 1;
-                next_state = S_PIV_CHANGE_ROW;
-                if (j < k * W) begin
+
+                //next_state = S_PIV_CHANGE_ROW;
+                if (j + 1  < (k + 1) * W && j + 1 < N) begin
                     next_j = j + 1;
                     next_w = w + 1;
                 end else begin
                     next_j = k * W;
                     next_w = 0;
                     next_state = S_PIV_CHANGE_ROW;
+
+                    if(p == '0) begin
+                        next_i = i + 1;
+                    end
                 end
             end
         end
@@ -196,27 +206,32 @@ always_comb begin : acc_state_machine
             if (cpu_fwd_valid_i) begin
                 next_a_iq = cpu_fwd_data_i;
                 next_state = S_PIV_ROW_I;
+                if(q == '0) begin
+                    next_j = j + 1;
+                    next_w = w + 1;
+                end
             end
         end
         S_PIV_ROW_I: begin
             cpu_raddr_o = x_s + w;
             if (cpu_rvalid_i && cpu_fwd_valid_i) begin
-                fpu_req_o.tag = x_s + w;
+                fpu_req_o.tag = x_s + W + r;
                 fpu_req_o.op = FNMSUB;
                 fpu_req_o.op_mod = 0;
                 fpu_req_o.operands[0] = a_iq; // A[p,j]
                 fpu_req_o.operands[1] = cpu_rdata_i;
                 fpu_req_o.operands[2] = cpu_fwd_data_i;
                 fpu_in_valid_o = 1;
-                if (j + (j+1 == q) < (W * (k + 1))) begin
+                if (j + (j+1 == q) + 1 < (W * (k + 1)) && j + (j+1 == q) + 1 < N) begin
                     next_j = j + 1 + (j+1 == q);
                     next_w = w + 1 + (j+1 == q);
                     next_r = ~r;
-                end else if (i + (i + 1 == p) < M) begin
+                end else if (i + (i + 1 == p) + 1 < M) begin
                     next_i = i + 1 + (i + 1 == p);
                     next_j = k * W;
                     next_w = 0;
                     next_r = ~r; // TODO: IS THIS RIGHT OR SHOULD IT BE 0? Also if R > 2?
+                    next_state = S_PIV_CHANGE_ROW;
                 end else if((k+1) * W < N) begin
                     next_i = 0;
                     next_j = k * W;
