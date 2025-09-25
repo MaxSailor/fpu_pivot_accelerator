@@ -104,13 +104,13 @@ module cpu_emu_tb;
     end
   end
 
-  initial begin //TODO: läs in rätt
+  initial begin
     tableau_mem[0:3] = '{
         32'h41500000,
         32'h40c00000,
         32'h40500000,
         32'h3f400000
-        //32'h3f800000
+        //32'h3f800000 // not actually stored in mem
     };  //  13.000,  6.000,  3.250,  0.750, 1.000
     tableau_mem[4:7] = '{
         32'hc1980000,
@@ -135,16 +135,11 @@ module cpu_emu_tb;
     };  // -2.000,   0.000, -1.750, -0.250, 0.000
   end
 
-  integer test_count = 0;
-  integer fail_count = 0;
-
-  // tags for pipeline testing
-  tag_t   tag_0;
-  tag_t   tag_1;
 
   int w, i, j, k;
   logic r;
   logic first_i_row;
+  data_t m, n, p, q, x_s, width;
 
   // Test sequence
   initial begin : decode_stage
@@ -157,88 +152,45 @@ module cpu_emu_tb;
     @(posedge rst_n);
     #10;
 
-    // instr_if.mem = '{
-    //     addr: 5'd1,
-    //     data: 32'd8,  //A[p,w]
-    //     read: 0
-    // };
-    // type_if = IMM;
-    // @(posedge clk);
-
-    // instr_if.mem = '{
-    //     addr: 5'd2,
-    //     data: 32'd4,  //A[p,w]
-    //     read: 0
-    // };
-    // type_if = IMM;
-    // @(posedge clk);
-
-    // instr_if.mem = '{
-    //     addr: 5'd3,
-    //     data: 32'd5,  //A[p,w]
-    //     read: 0
-    // };
-    // type_if = IMM;
-    // @(posedge clk);
-
-    // instr_if.mem = '{
-    //     addr: 5'd4,
-    //     data: 32'd0,  //A[p,w]
-    //     read: 0
-    // };
-    // type_if = IMM;
-    // @(posedge clk);
-
-    // instr_if.mem = '{
-    //     addr: 5'd5,
-    //     data: 32'd0,  //A[p,w]
-    //     read: 0
-    // };
-    // type_if = IMM;
-    // @(posedge clk);
-
-    // instr_if.mem = '{
-    //     addr: 5'd6,
-    //     data: 32'd8,  //A[p,w]
-    //     read: 0
-    // };
-    // type_if = IMM;
-    // @(posedge clk);
-    // type_if = INVALID;
-
-    // @(posedge clk);
-    // @(posedge clk);
-    // @(posedge clk);
-
-    // instr_if.mem = '{
-    //     addr: 5'd7,
-    //     data: x[3]*x[4]+x[5],  //A[p,w]
-    //     read: 1
-    // };
-    // type_if = MEM;
-    // @(posedge clk);
-    // type_if = INVALID;
-    // @(posedge clk);
-    // @(posedge clk);
-
     x[1] = W;
     x[2] = M;
     x[3] = N;
     x[4] = P;
     x[5] = Q;
     x[6] = XS;
-    x[7] = 32'h41500000; // 13.0
+
+    width = x[1];
+    m = x[2];
+    n = x[3];
+    p = x[4];
+    q = x[5];
+    x_s = x[6];
+    @(posedge clk);
+    @(posedge clk);
+
+    // issue/decode:
+
+    // load a_pq into x[7]
+    instr_dc.mem = '{
+        addr: 5'd7,
+        data: n*p+q,
+        read: 1
+    };
+    type_dc = MEM;
+    @(posedge clk);
+    type_dc = INVALID;
+    @(posedge clk);
     @(posedge clk);
 
 
-
+    // calculate 1/a_pq
     instr_dc.acc = '{
         operation: '{fpu_operation: DIV},
         acc_op: 1'b0,  // FPU operation
         op_mod_i: 1'b0,
+        op0: 32'h3F800000,
+        op1: x[7],
         op2: 32'h00000000,  // Not used
-        op1: x[7],  // b = 1.0 (FP32)
-        op0: 32'h3F800000,  // c = 2.0 (FP32)
         rd: 5'd7  // Destination register
     };
     type_dc = ACC;
@@ -250,60 +202,62 @@ module cpu_emu_tb;
 
     @(posedge clk);
 
-    // Issue prepiv
+    // prepiv
     instr_dc.acc = '{
         operation: '{acc_operation: OPERATION_PREPIV},
         acc_op: 1'b1,  // ACC operation
         op_mod_i: 1'b0,
-        op0: x[6],  // x_s
-        op1: x[2],  // m
-        op2: x[3],  // n
+        op0: x_s,
+        op1: m,
+        op2: n,
         rd: 5'd0  // Destination register
     };
     type_dc = ACC;
     @(posedge clk);
 
-    // Issue pivot
+    // pivot
     instr_dc.acc = '{
         operation: '{acc_operation: OPERATION_PIV},
         acc_op: 1'b1,  // ACC operation
         op_mod_i: 1'b0,
-        op0: x[4],  // p
-        op1: x[5],  // q
+        op0: p,
+        op1: q,
         op2: x[7],  // a_pq_inv
         rd: 5'd0  // Destination register
     };
     type_dc = ACC;
     @(posedge clk);
 
-    //LOADS AND STORES
+    // LOADS AND STORES
     for (
-        w = 0, r = 0, i = 0, j = 0, k = 0 , first_i_row = 1; k * x[1] < x[3]; k++
-    ) begin : main_loop
-      for (w = 0, j = k * x[1]; w < x[1] && j < x[3]; w++, j++) begin : piv_row
-        //TODO: handle case wheen n < w and k never not 0
-        //if(j == x[5]) continue;
+        r = 0, i = 0, j = 0, k = 0 , first_i_row = 1; k * width < n; k++
+    ) begin : band_loop
+      for (w = 0, j = k * width; w < width && j < n; w++, j++) begin : piv_row
+        //if(j == q) continue;
         if (k > 0) begin
+          // store previous partial pivot row
           instr_dc.mem = '{
-              addr: x[4] * x[3] + j - i,
-              data: x[6] + w,  //A[p,w]
+              addr: p * n + j - i,
+              data: x_s + w,
               read: 0
           };
           type_dc = MEM;
           @(posedge clk);
         end
-        if(j == x[3] - 1) begin
+        if(j == n - 1 /* N-1 */) begin
+          // immediate load extra column (not in mem)
           instr_dc.mem = '{
               addr: 0,
-              data: 32'h3f800000,  //A[p,w]
+              data: 32'h3f800000,
               read: 1
           };
           type_dc = IMM;
           @(posedge clk);
         end else begin
+          // load A[p,j]
           instr_dc.mem = '{
-              addr: x[6] + w,
-              data: x[4] * x[3] + j - i,  //A[p,w]
+              addr: x_s + w,
+              data: p * n + j - i,
               read: 1
           };
           type_dc = MEM;
@@ -311,41 +265,49 @@ module cpu_emu_tb;
         end
       end
 
-      for (i = 0; i < x[2]; i++, w = 0, j = k * x[1]) begin : other_rows
-        if (i == x[4]) continue;
+      for (i = 0; i < m; i++, w = 0, j = k * width) begin : other_rows
+        if (i == p) continue; // skip pivot row
+
+        // load piv col element
         instr_dc.mem = '{
             addr: 0,
-            data: i * x[3] + x[5] - i,  //A[i,q]
+            data: i * n + q - i,  //A[i,q]
             read: 1
         };
         type_dc = MEM;
+
         @(posedge clk);
-        for (j = k * x[1]; w < x[1] && j < x[3]; w++, j++, r = ~r) begin : row_i
-          if (j == x[5])begin
-            r = ~r;
-            continue;
-          end
-          if (w > (1 + (j > x[5])) || !first_i_row) begin
-            if(j == k*x[1] + (x[5] == k*x[1])) begin
+
+        for (j = k * width; w < width && j < n; w++, j++) begin : row_i
+          if (j == q) continue; // skip pivot col
+          if (w > (1 + (w > (q - k * width))) || !(i == (p == 0))) begin // TODO: fix for W <= N
+            if (j == k*width + (q == k*width)) begin // TODO: R != 2
+              // first non-pivot column of band
               instr_dc.mem = '{
-                  addr: ((k + 1)*x[1] < x[3]) ?(i - 1) * x[3] + (k+1)*x[1] - ((k+1)*x[1] - 1 == x[5] || (k+1)*x[1] - 2 == x[5]) - i - 1: i * x[3] - i - 1 -(x[3]-2 == x[5]),
-                  data: x[6]+x[1]+r,  //A[p,w]
+                  addr: ((k + 1)*width < n)
+                          ? (i - 1) * n + (k+1)*width - ((k+1)*width - 1 == q || (k+1)*width - 2 == q) - i - 1
+                          : i * n - i - 1 -(n-2 == q),
+                  data: x_s+width+r,
                   read: 0
               };
               type_dc = MEM;
               @(posedge clk);
-            end else if(j == k*x[1] + 1 + (x[5] == k*x[1] || x[5] == k*x[1] + 1))begin
+            end else if (j == k*width + 1 + (q == k*width || q == k*width + 1)) begin
+              // second non-pivot column of band
               instr_dc.mem = '{
-                  addr: ((k + 1)*x[1] < x[3]) ? (i - 1) * x[3] + (k+1)*x[1] - ((k+1)*x[1] - 1 == x[5]) - i: (i - 1) * x[3] + x[5] - i + 1,
-                  data: x[6]+x[1]+r,  //A[p,w]
+                  addr: ((k + 1)*width < n)
+                          ? (i - 1) * n + (k+1)*width - ((k+1)*width - 1 == q) - i
+                          : (i - 1) * n + q - i + 1,
+                  data: x_s+width+r,
                   read: 0
               };
               type_dc = MEM;
               @(posedge clk);
             end else begin
+              // all other columns
               instr_dc.mem = '{
-                  addr: i * x[3] + j - 2 - (j - 2 == x[5] || j - 1 == x[5] || j - 2 + x[3] == x[5]) - i,
-                  data: x[6]+x[1]+r,  //A[p,w]
+                  addr: i * n + j - 2 - (j - 2 == q || j - 1 == q ) - i,
+                  data: x_s+width+r,
                   read: 0
               };
               type_dc = MEM;
@@ -353,30 +315,34 @@ module cpu_emu_tb;
             end
           end
 
-          if(j == x[3] - 1)begin
+          if (j == n - 1) begin
             instr_dc.mem = '{
                 addr: 0,
-                data: 32'h00000000,  //A[p,w]
+                data: 32'h00000000,
                 read: 1
             };
             type_dc = IMM;
             @(posedge clk);
           end else begin
             instr_dc.mem = '{
-                addr: x[6] + x[1] + r,
-                data: i * x[3] + j - i,  //A[p,w]
+                addr: x_s + width + r,
+                data: i * n + j - i,
                 read: 1
             };
             type_dc = MEM;
             @(posedge clk);
           end
+
+          r = ~r;
         end
         first_i_row = 0;
       end
 
       instr_dc.mem = '{
-          addr: ((k + 1)*x[1] < x[3]) ?(i - 1) * x[3] + (k+1)*x[1] - ((k+1)*x[1] - 1 == x[5] || (k+1)*x[1] - 2 == x[5]) - i - 1: i * x[3] - i - 1 -(x[3]-2 == x[5]),
-          data: x[6]+x[1]+r,  //A[p,w]
+          addr: ((k + 1)*width < n)
+                  ? (i - 1) * n + (k+1)*width - ((k+1)*width - 1 == q || (k+1)*width - 2 == q) - i - 1
+                  : i * n - i - 1 -(n-2 == q),
+          data: x_s+width+r,
           read: 0
       };
       type_dc = MEM;
@@ -385,28 +351,32 @@ module cpu_emu_tb;
       r=~r;
       @(posedge clk);
       instr_dc.mem = '{
-          addr: ((k + 1)*x[1] < x[3]) ? (i - 1) * x[3] + (k+1)*x[1] - ((k+1)*x[1] - 1 == x[5]) - i: (i - 1) * x[3] + x[5] - i + 1,
-          data: x[6]+x[1]+r,  //A[p,w]
+          addr: ((k + 1)*width < n)
+                  ? (i - 1) * n + (k+1)*width - ((k+1)*width - 1 == q) - i
+                  : (i - 1) * n + q - i + 1,
+          data: x_s+width+r,
           read: 0
       };
       type_dc = MEM;
       @(posedge clk);
     end
 
-    for(w = 0, i = x[4], j = (k - 1) * x[1]; w < x[1] && j < x[3]; j++, w++)begin
-      if(j == x[5]) continue;
-      if(j == x[3] - 1) begin
+    for (w = 0, i = p, j = (k - 1) * width; w < width && j < n; j++, w++) begin : store_last_partial_piv_row
+      if(j == q) continue;
+      if(j == n - 1 /* N-1 */) begin
+        // store extra element to piv element
         instr_dc.mem = '{
-            addr: i * x[3] + x[5] - i,
-            data: x[6]+w,  //A[p,w]
+            addr: i * n + q - i,
+            data: x_s+w,
             read: 0
         };
         type_dc = MEM;
         @(posedge clk);
       end else begin
+        // store all other elements
         instr_dc.mem = '{
-            addr: i * x[3] + j - i,
-            data: x[6]+w,  //A[p,w]
+            addr: i * n + j - i,
+            data: x_s+w,
             read: 0
         };
         type_dc = MEM;
@@ -414,15 +384,6 @@ module cpu_emu_tb;
       end
     end
 
-    // for(i = 0; i < x[2]; i++)begin
-    //   instr_dc.mem = '{
-    //       addr: (i + 1) * x[3] - 1 - i,
-    //       data: 0,  //A[p,w]
-    //       read: 0
-    //   };
-    //   type_dc = MEM;
-    //   @(posedge clk);
-    // end
     type_dc = INVALID;
   end
 
@@ -498,9 +459,9 @@ module cpu_emu_tb;
       invalids++;
       if (invalids > 50) begin
         $display("Timeout! \n");
-        for (int i = 0; i < x[2]; i++) begin
-          for (int j = 0; j < x[3]; j++) begin
-            $display("%h, ", tableau_mem[i*x[3]+j]);
+        for (int i = 0; i < m; i++) begin
+          for (int j = 0; j < n; j++) begin
+            $display("%h, ", tableau_mem[i*n+j]);
           end
           $display("\n");
         end
